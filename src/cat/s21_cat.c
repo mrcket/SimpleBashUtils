@@ -60,38 +60,72 @@ void reader(int argc, char *argv[], opt *options) {
             int last_char = 0;
 
             while ((current_char = fgetc(file)) != EOF) {
-                    if (line_beginning) {
-                        if (options->b && current_char != '\n') {
-                            printf("%6d\t", line_number++);
-                        } else if (options->n && !options->b) {
-                            printf("%6d\t", line_number++);
-                        }
-                        line_beginning = 0;
-                    }
-
-                    if (options->s) {
-                        if (last_char == '\n' && current_char == '\n') {
-                            line_beginning = 1;
-                            continue;
-                        }
+                // Флаг -s (должен быть в начале)
+                if (options->s) {
+                    if (last_char == '\n' && current_char == '\n') {
+                        line_beginning = 1;
                         last_char = current_char;
-                    }
-
-                    if (options->e && current_char == '\n') {
-                        printf("$");
-                    }
-
-                    if (options->t && current_char == '\t') {
-                        printf("^I");
                         continue;
                     }
-
-                    
-                    printf("%c",current_char);
-
-                    if (current_char == '\n') {
-                        line_beginning = 1;
+                    last_char = current_char;
+                }
+                
+                // Нумерация строк
+                if (line_beginning) {
+                    if (options->b && current_char != '\n') {
+                        printf("%6d\t", line_number++);
+                    } else if (options->n && !options->b) {
+                        printf("%6d\t", line_number++);
                     }
+                    line_beginning = 0;
+                }
+
+                // 1. Обработка -v ДО других флагов
+                if (options->v) {
+                    if (current_char == 127) {
+                        printf("^?");
+                        continue;
+                    }
+                    else if (current_char < 32) {
+                        if (current_char != '\t' && current_char != '\n') {
+                            printf("^%c", current_char + 64);
+                            continue;
+                        }
+                    }
+                    else if (current_char >= 128) {
+                        int c = current_char - 128;
+                        if (c == 127) {
+                            printf("M-^?");
+                        }
+                        else if (c < 32) {
+                            printf("M-^%c", c + 64);
+                        }
+                        else { 
+                            printf("M-%c", c);
+                        }
+                        continue;
+                    }
+                }
+
+                // 2. Обработка -e
+                if (options->e && current_char == '\n') {
+                    printf("$");
+                }
+
+                // 3. Обработка -t/-T
+                if (options->t && current_char == '\t') {
+                    printf("DEBUG: TAB CHARACTER FOUND!\n");
+                    printf("^I");
+                    continue;  // Пропускаем основной вывод
+                }
+
+                // Основной вывод символа
+                printf("%c", current_char);
+
+                // Обновление состояния переноса строки
+                if (current_char == '\n') {
+                    line_beginning = 1;
+                }
             }
             fclose(file);
         } else {
