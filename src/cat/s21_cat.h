@@ -1,8 +1,6 @@
 #ifndef S21_CAT_H
 #define S21_CAT_H
 
-#define FILE_BUFFER_MAX 4096
-
 #include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>

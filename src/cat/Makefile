@@ -3,7 +3,7 @@ CFLAGS = -std=c11 -Wall -Werror -Wextra
 
 all: s21_grep
 
-s21_grep: s21_cat.c
+s21_cat: s21_cat.c
 	$(CC) $(CFLAGS) s21_cat.c -o s21_cat
 
 clean:
