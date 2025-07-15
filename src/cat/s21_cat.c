@@ -1,22 +1,20 @@
 #include "s21_cat.h"
 
-int main(int argc, char ** argv)
-{
+int main(int argc, char ** argv) {
     opt options = {0};
     parser(argc, argv, &options);
     reader(argc, argv, &options);
-
     return 0;
 }
 
-void parser(int argc, char * argv[], opt *options){
+void parser(int argc, char * argv[], opt *options) {
     int option;
     int option_index = -1;
 
-    while((option = getopt_long(argc, argv, shortoptions, long_options, &option_index)) != -1){
-        switch(option){
+    while ((option = getopt_long(argc, argv, shortoptions, long_options, &option_index)) != -1) {
+        switch (option) {
             case 'b':
-                options->b=1;
+                options->b = 1;
                 break;
             case 'e':
                 options->e = 1;
@@ -45,8 +43,59 @@ void parser(int argc, char * argv[], opt *options){
                 fprintf(stderr, "usage: cat [-benstuv] [file ...]\n");
                 exit(1);
         }
-
         option_index = -1;
+    }
+}
+
+void process_char(int current_char, opt *options, int *line_number, int *line_beginning, int *empty_line_count, int *last_char) {
+    if (options->s) {
+        if (*last_char == '\n' && current_char == '\n') {
+            (*empty_line_count)++;
+            if (*empty_line_count > 1) {
+                *last_char = current_char;
+                return;
+            }
+        } else {
+            *empty_line_count = 0;
+        }
+    }
+
+    if (*line_beginning) {
+        if ((options->b && current_char != '\n') || (options->n && !options->b)) {
+            printf("%6d\t", (*line_number)++);
+        }
+        *line_beginning = 0;
+    }
+
+    if (options->v) {
+        if (current_char == 127) {
+            printf("^?");
+            return;
+        } else if (current_char < 32 && current_char != 9 && current_char != 10) {
+            printf("^%c", current_char + 64);
+            return;
+        } else if (current_char > 127 && current_char < 160) {
+            printf("M-^%c", current_char - 64);
+            return;
+        } else if (current_char >= 160) {
+            printf("M-%c", current_char - 128);
+            return;
+        }
+    }
+
+    if (options->e && current_char == '\n') {
+        printf("$");
+    }
+
+    if (options->t && current_char == '\t') {
+        printf("^I");
+        return;
+    }
+
+    putchar(current_char);
+
+    if (current_char == '\n') {
+        *line_beginning = 1;
     }
 }
 
@@ -57,75 +106,12 @@ void reader(int argc, char *argv[], opt *options) {
             int current_char;
             int line_number = 1;
             int line_beginning = 1;
-            int last_char = 0;
+            int empty_line_count = 0;
+            int last_char = '\n';
 
             while ((current_char = fgetc(file)) != EOF) {
-                // Флаг -s (должен быть в начале)
-                if (options->s) {
-                    if (last_char == '\n' && current_char == '\n') {
-                        line_beginning = 1;
-                        last_char = current_char;
-                        continue;
-                    }
-                    last_char = current_char;
-                }
-                
-                // Нумерация строк
-                if (line_beginning) {
-                    if (options->b && current_char != '\n') {
-                        printf("%6d\t", line_number++);
-                    } else if (options->n && !options->b) {
-                        printf("%6d\t", line_number++);
-                    }
-                    line_beginning = 0;
-                }
-
-                // 1. Обработка -v ДО других флагов
-                if (options->v) {
-                    if (current_char == 127) {
-                        printf("^?");
-                        continue;
-                    }
-                    else if (current_char < 32) {
-                        if (current_char != '\t' && current_char != '\n') {
-                            printf("^%c", current_char + 64);
-                            continue;
-                        }
-                    }
-                    else if (current_char >= 128) {
-                        int c = current_char - 128;
-                        if (c == 127) {
-                            printf("M-^?");
-                        }
-                        else if (c < 32) {
-                            printf("M-^%c", c + 64);
-                        }
-                        else { 
-                            printf("M-%c", c);
-                        }
-                        continue;
-                    }
-                }
-
-                // 2. Обработка -e
-                if (options->e && current_char == '\n') {
-                    printf("$");
-                }
-
-                // 3. Обработка -t/-T
-                if (options->t && current_char == '\t') {
-                    printf("DEBUG: TAB CHARACTER FOUND!\n");
-                    printf("^I");
-                    continue;  // Пропускаем основной вывод
-                }
-
-                // Основной вывод символа
-                printf("%c", current_char);
-
-                // Обновление состояния переноса строки
-                if (current_char == '\n') {
-                    line_beginning = 1;
-                }
+                process_char(current_char, options, &line_number, &line_beginning, &empty_line_count, &last_char);
+                last_char = current_char;
             }
             fclose(file);
         } else {
