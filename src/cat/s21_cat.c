@@ -48,6 +48,8 @@ void parser(int argc, char * argv[], opt *options) {
 }
 
 void process_char(int current_char, opt *options, int *line_number, int *line_beginning, int *empty_line_count, int *last_char) {
+    int printed = 0;
+
     if (options->s) {
         if (*last_char == '\n' && current_char == '\n') {
             (*empty_line_count)++;
@@ -70,29 +72,30 @@ void process_char(int current_char, opt *options, int *line_number, int *line_be
     if (options->v) {
         if (current_char == 127) {
             printf("^?");
-            return;
+            printed = 1;
         } else if (current_char < 32 && current_char != 9 && current_char != 10) {
             printf("^%c", current_char + 64);
-            return;
+            printed = 1;
         } else if (current_char > 127 && current_char < 160) {
             printf("M-^%c", current_char - 64);
-            return;
+            printed = 1;
         } else if (current_char >= 160) {
             printf("M-%c", current_char - 128);
-            return;
+            printed = 1;
         }
     }
 
-    if (options->e && current_char == '\n') {
-        printf("$");
-    }
+    if (!printed) {
+        if (options->e && current_char == '\n') {
+            printf("$");
+        }
 
-    if (options->t && current_char == '\t') {
-        printf("^I");
-        return;
+        if (options->t && current_char == '\t') {
+            printf("^I");
+        } else {
+            putchar(current_char);
+        }
     }
-
-    putchar(current_char);
 
     if (current_char == '\n') {
         *line_beginning = 1;
